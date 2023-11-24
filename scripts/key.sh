@@ -9,5 +9,3 @@ else
     echo "libssl-dev package already install."
 fi
 
-gcc -o key key.c -lssl -lcrypto -Wno-deprecated-declarations
-

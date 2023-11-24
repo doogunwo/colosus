@@ -4,7 +4,7 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
-#include "crypto.h"
+#include "../include/crypto.h"
 #define BUFFER_SIZE 1024
 
 void handleErrors(void) {
@@ -45,7 +45,6 @@ void encryptFile(const char *inputFileName, const char *publicKeyFileName, const
 
     RSA *publicKey = PEM_read_bio_RSAPublicKey(publicKeyBio, NULL, NULL, NULL);
     BIO_free(publicKeyBio);
-
      if (!publicKey) {
         fprintf(stderr, "Error reading public key: PEM_read_bio_RSAPublicKey failed\n");
         fclose(inputFile);
@@ -53,6 +52,9 @@ void encryptFile(const char *inputFileName, const char *publicKeyFileName, const
         fclose(outputFile);
         exit(EXIT_FAILURE);
     }
+
+
+
     int keySize = RSA_size(publicKey);
     unsigned char *inputBuffer = (unsigned char *)malloc(BUFFER_SIZE);
     unsigned char *outputBuffer = (unsigned char *)malloc(keySize);
@@ -71,6 +73,7 @@ void encryptFile(const char *inputFileName, const char *publicKeyFileName, const
             }
             fwrite(outputBuffer, 1, keySize, outputFile);
         }
+        printf("%.*s\n", (int)bytesRead, outputBuffer);
     }
 
     fclose(inputFile);
@@ -103,26 +106,41 @@ void decryptFile(const char *inputFileName, const char *privateKeyFileName, cons
         exit(EXIT_FAILURE);
     }
     //PEM_read_bio_RSAPrivateKey
-    RSA *privateKey = PEM_read_bio_RSAPrivateKey(privateKeyFile, NULL, NULL, NULL);
-    if (!privateKey) {
-        perror("Error reading private key");
+    BIO *privateKeyBio = BIO_new_file(privateKeyFileName, "rb");
+    if (!privateKeyBio) {
+        perror("Error creating BIO for private key");
         fclose(inputFile);
         fclose(privateKeyFile);
         fclose(outputFile);
         exit(EXIT_FAILURE);
     }
 
+    RSA *privateKey = PEM_read_bio_RSAPrivateKey(privateKeyBio, NULL, NULL, NULL);
+    BIO_free(privateKeyBio);
+
+    if (!privateKey) {
+        fprintf(stderr, "Error reading private key: PEM_read_bio_RSAPrivateKey failed\n");
+        fclose(inputFile);
+        fclose(privateKeyFile);
+        fclose(outputFile);
+        exit(EXIT_FAILURE);
+    }
+
+  
+
     int keySize = RSA_size(privateKey);
     unsigned char *inputBuffer = (unsigned char *)malloc(keySize);
-    unsigned char *outputBuffer = (unsigned char *)malloc(keySize);
+    unsigned char *outputBuffer = (unsigned char *)malloc(BUFFER_SIZE);
 
     size_t bytesRead;
     while ((bytesRead = fread(inputBuffer, 1, keySize, inputFile)) > 0) {
-        if (RSA_private_decrypt(bytesRead, inputBuffer, outputBuffer, privateKey, RSA_PKCS1_PADDING) < 0) {
+        int decryptedSize = RSA_private_decrypt(bytesRead, inputBuffer, outputBuffer, privateKey, RSA_PKCS1_PADDING);
+        if (decryptedSize < 0) {
             handleErrors();
         }
 
-        fwrite(outputBuffer, 1, keySize, outputFile);
+        fwrite(outputBuffer, 1, decryptedSize, outputFile);
+        printf("%.*s\n", (int)bytesRead, outputBuffer);
     }
 
     fclose(inputFile);

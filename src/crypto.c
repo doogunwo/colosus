@@ -7,10 +7,6 @@
 #include "../include/crypto.h"
 #define BUFFER_SIZE 1024
 
-void handleErrors(void) {
-    ERR_print_errors_fp(stderr);
-    exit(EXIT_FAILURE);
-}
 
 void encryptFile(const char *inputFileName, const char *publicKeyFileName, const char *outputFileName) {
     FILE *inputFile = fopen(inputFileName, "rb");
@@ -52,14 +48,12 @@ void encryptFile(const char *inputFileName, const char *publicKeyFileName, const
         fclose(outputFile);
         exit(EXIT_FAILURE);
     }
-
-
-
     int keySize = RSA_size(publicKey);
     unsigned char *inputBuffer = (unsigned char *)malloc(BUFFER_SIZE);
     unsigned char *outputBuffer = (unsigned char *)malloc(keySize);
-
     size_t bytesRead;
+
+
     while ((bytesRead = fread(inputBuffer, 1, BUFFER_SIZE, inputFile)) > 0) {
         if (bytesRead < BUFFER_SIZE) {
             int paddedSize = RSA_public_encrypt(bytesRead, inputBuffer, outputBuffer, publicKey, RSA_PKCS1_PADDING);
